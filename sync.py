@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Sync between Foxpass and Duo.')
 parser.add_argument('--once', action='store_true', help='Run once and exit')
+parser.add_argument('--do', action='store_true', help='Run sync otherwise will only print what it would do without actually doing it (or non-empty FOXPASS_DUO_DO_SYNC env. var.)')
 parser.add_argument('--interval', default=5, type=int, help='Minutes to wait between runs')
 parser.add_argument('--foxpass-hostname', default='https://api.foxpass.com',
                     help='Foxpass API URL, e.g. https://api.foxpass.com (or FOXPASS_HOSTNAME env. var.)')
@@ -54,6 +55,8 @@ try:
     FOXPASS_HOSTNAME = ARGS.foxpass_hostname or os.environ['FOXPASS_HOSTNAME']
     FOXPASS_API_KEY = ARGS.foxpass_api_key or os.environ['FOXPASS_API_KEY']
     FOXPASS_GROUP = ARGS.foxpass_group or os.environ.get('FOXPASS_GROUP', None)
+
+    FOXPASS_DUO_DO_SYNC = ARGS.do or True if 'FOXPASS_DUO_DO_SYNC' in os.environ else False
 
     DUO_HOSTNAME = ARGS.duo_hostname or os.environ['DUO_HOSTNAME']
     DUO_IKEY = ARGS.duo_ikey or os.environ['DUO_IKEY']
@@ -125,12 +128,20 @@ def sync():
          if email in duo_email_set:
              continue
 
-         logger.info("Need to enroll {}".format(email))
          username = email.split('@')[0]
          try:
-             pass # admin_api.enroll_user(username, email)
+             if not FOXPASS_DUO_DO_SYNC:
+                 logger.info("[DRY RUN] Would enroll {}".format(email))
+             else:
+                 logger.info("Enrolling {} ...".format(email))
+                 admin_api.enroll_user(username, email)
          except:
              logger.exception("Can't enroll user {}".format(email))
+
+    if not FOXPASS_DUO_DO_SYNC:
+        logger.info('--do was not specified, no users synced')
+        logger.info('Re-run script with --do to actually run sync process')
+
 
 def main():
     while True:
