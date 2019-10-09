@@ -39,7 +39,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Sync between Foxpass and Duo.')
-parser.add_argument('--once', action='store_true', help='Run once and exit')
+parser.add_argument('--once', action='store_true', help='Run once and exit (or non-empty FOXPASS_DUO_SYNC_ONCE env. var.)')
 parser.add_argument('--do', action='store_true', help='Run sync otherwise will only print what it would do without actually doing it (or non-empty FOXPASS_DUO_DO_SYNC env. var.)')
 parser.add_argument('--interval', default=5, type=int, help='Minutes to wait between runs')
 parser.add_argument('--foxpass-hostname', default='https://api.foxpass.com',
@@ -56,6 +56,7 @@ try:
     FOXPASS_API_KEY = ARGS.foxpass_api_key or os.environ['FOXPASS_API_KEY']
     FOXPASS_GROUP = ARGS.foxpass_group or os.environ.get('FOXPASS_GROUP', None)
 
+    FOXPASS_DUO_SYNC_ONCE = ARGS.once or True if 'FOXPASS_DUO_SYNC_ONCE' in os.environ else False
     FOXPASS_DUO_DO_SYNC = ARGS.do or True if 'FOXPASS_DUO_DO_SYNC' in os.environ else False
 
     DUO_HOSTNAME = ARGS.duo_hostname or os.environ['DUO_HOSTNAME']
@@ -157,7 +158,7 @@ def main():
         except:
             logger.exception('Unhandled exception during sync')
 
-        if ARGS.once:
+        if FOXPASS_DUO_SYNC_ONCE:
             return
 
         logger.info('Sleeping for {} minuntes'.format(ARGS.interval))
