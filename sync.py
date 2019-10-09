@@ -142,6 +142,11 @@ def sync():
         logger.info('--do was not specified, no users synced')
         logger.info('Re-run script with --do to actually run sync process')
 
+# This is one is to be used when triggering script as AWS Lambda
+# Since it does not need any external input from Lambda trigger
+# context and input are ignored
+def lambda_handler(json_input, context):
+    main()
 
 def main():
     while True:
