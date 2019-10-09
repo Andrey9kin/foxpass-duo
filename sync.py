@@ -147,6 +147,9 @@ def sync():
 # Since it does not need any external input from Lambda trigger
 # context and input are ignored
 def lambda_handler(json_input, context):
+    # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
+    # `.basicConfig` does not execute. Thus we set the level directly.
+    logging.getLogger().setLevel(logging.INFO)
     main()
 
 def main():
