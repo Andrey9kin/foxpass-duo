@@ -102,10 +102,10 @@ def get_all_foxpass_users():
 
 def sync():
     duo_users = admin_api.get_users()
-    duo_email_set = set()
+    duo_email_set = dict()
     for user in duo_users:
-        if user['email']:
-            duo_email_set.add(user['email'])
+        if user['email'] and user['email'] not in duo_email_set.keys():
+            duo_email_set[user['email']] = user
 
     foxpass_users = get_all_foxpass_users()
 
@@ -115,29 +115,41 @@ def sync():
 
     # make a set of foxpass users that should be in duo. they must be active and if a group is
     # specified, they must be in that group
-    foxpass_email_set = set()
+    foxpass_sync_set = list()
     for user in foxpass_users:
-        if user['active'] and (not group_members or user['username'] in group_members):
-            foxpass_email_set.add(user['email'])
+        if user['active'] and (not group_members or user['username'] in group_members) and user not in foxpass_sync_set:
+            foxpass_sync_set.append(user)
 
     # duo_email_set is all duo email addresses
-    # foxpass_email_set is all email addresses for ACTIVE foxpass users
+    # foxpass_sync_set is all active foxpass users
+    # enroll into duo every foxpass user that's not already there
+    for user in foxpass_sync_set:
+        if user['email'] in duo_email_set.keys():
+            if not FOXPASS_DUO_DO_SYNC:
+                logger.info("[DRY RUN] Would update {}".format(user['email']))
+            else:
+                logger.info("Updating {} ...".format(user['email']))
+                admin_api.update_user(duo_email_set[user['email']]['user_id'],
+                                      user['username'],
+                                      '{} {}'.format(user['first_name'], user['last_name']),
+                                      'active',
+                                      'Automatically synced from foxpass',
+                                      user['email'],
+                                      user['first_name'],
+                                      user['last_name'])
+            continue
 
-    # enroll into duo every foxpass email address that's not already there
-    for email in foxpass_email_set:
-         # already in duo? skip to next
-         if email in duo_email_set:
-             continue
-
-         username = email.split('@')[0]
-         try:
-             if not FOXPASS_DUO_DO_SYNC:
-                 logger.info("[DRY RUN] Would enroll {}".format(email))
-             else:
-                 logger.info("Enrolling {} ...".format(email))
-                 admin_api.enroll_user(username, email)
-         except:
-             logger.exception("Can't enroll user {}".format(email))
+        if not FOXPASS_DUO_DO_SYNC:
+            logger.info("[DRY RUN] Would create {}".format(user['email']))
+        else:
+            logger.info("Creating {} ...".format(user['email']))
+            admin_api.add_user(user['username'],
+                               '{} {}'.format(user['first_name'], user['last_name']),
+                               'active',
+                               'Automatically synced from foxpass',
+                               user['email'],
+                               user['first_name'],
+                               user['last_name'])
 
     if not FOXPASS_DUO_DO_SYNC:
         logger.info('--do was not specified, no users synced')
