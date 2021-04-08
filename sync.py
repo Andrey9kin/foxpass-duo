@@ -30,7 +30,7 @@ import logging
 import requests
 import sys
 import time
-import urlparse
+import urllib.parse
 import os
 
 import duo_client
@@ -76,7 +76,7 @@ admin_api = duo_client.Admin(
 )
 
 def get_foxpass_users_in_group(group):
-    group_url = urlparse.urljoin(FOXPASS_HOSTNAME, '/v1/groups/{}/members/'.format(group))
+    group_url = urllib.parse.urljoin(FOXPASS_HOSTNAME, '/v1/groups/{}/members/'.format(group))
 
     r = requests.get(group_url, headers=FOXPASS_REQUEST_HEADERS)
     r.raise_for_status()
@@ -89,7 +89,7 @@ def get_foxpass_users_in_group(group):
     return None
 
 def get_all_foxpass_users():
-    url = urlparse.urljoin(FOXPASS_HOSTNAME, '/v1/users/')
+    url = urllib.parse.urljoin(FOXPASS_HOSTNAME, '/v1/users/')
 
     r = requests.get(url, headers=FOXPASS_REQUEST_HEADERS)
     r.raise_for_status()
@@ -104,7 +104,7 @@ def sync():
     duo_users = admin_api.get_users()
     duo_email_set = dict()
     for user in duo_users:
-        if user['email'] and user['email'] not in duo_email_set.keys():
+        if user['email'] and user['email'] not in list(duo_email_set.keys()):
             duo_email_set[user['email']] = user
 
     foxpass_users = get_all_foxpass_users()
@@ -124,7 +124,7 @@ def sync():
     # foxpass_sync_set is all active foxpass users
     # enroll into duo every foxpass user that's not already there
     for user in foxpass_sync_set:
-        if user['email'] in duo_email_set.keys():
+        if user['email'] in list(duo_email_set.keys()):
             if not FOXPASS_DUO_DO_SYNC:
                 logger.info("[DRY RUN] Would update {}".format(user['email']))
             else:
